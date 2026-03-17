@@ -71,7 +71,7 @@ android {
     applicationVariants.all {
         outputs.all {
             this as ApkVariantOutputImpl
-            outputFileName = "revanced-manager-downloaders-$version.apk"
+            outputFileName = "revanced-manager-extended-downloaders-$version.apk"
         }
     }
 }
@@ -95,6 +95,7 @@ dependencies {
     implementation(libs.ktor.core)
     implementation(libs.ktor.logging)
     implementation(libs.ktor.okhttp)
+    implementation(libs.ktor.encoding)
 
     implementation(libs.fragment)
 }
@@ -103,7 +104,7 @@ tasks.register("assembleReleaseSignApk") {
     dependsOn("assembleRelease")
 
     val apk =
-        layout.buildDirectory.file("outputs/apk/release/revanced-manager-downloaders-$version.apk")
+        layout.buildDirectory.file("outputs/apk/release/revanced-manager-downloaders-extended-$version.apk")
 
     inputs.file(apk).withPropertyName("input")
     outputs.file(apk.map { it.asFile.resolveSibling("${it.asFile.name}.asc") })

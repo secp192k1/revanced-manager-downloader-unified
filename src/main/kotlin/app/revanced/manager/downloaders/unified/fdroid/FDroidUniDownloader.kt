@@ -1,6 +1,6 @@
 @file:Suppress("Unused")
 
-package app.revanced.manager.downloaders.extended.fdroid
+package app.revanced.manager.downloaders.unified.fdroid
 
 import android.net.Uri
 import app.revanced.manager.downloader.DownloadUrl
@@ -13,9 +13,9 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteRecursively
 
 @OptIn(ExperimentalPathApi::class)
-val FDroidEXDownloader = Downloader(R.string.fdroid_ex) {
+val FDroidEXDownloader = Downloader(R.string.fdroid_uni) {
     get { packageName, version ->
-        runWebView("F-Droid EX") {
+        runWebView("F-Droid ★") {
             download { url, _, userAgent ->
                 finish(
                     DownloadUrl(
@@ -34,7 +34,7 @@ val FDroidEXDownloader = Downloader(R.string.fdroid_ex) {
     }
 
     download { downloadUrl, outputStream ->
-        val workingDir = Files.createTempDirectory("fdroid_ex_dl")
+        val workingDir = Files.createTempDirectory("fdroid_uni_dl")
         try {
             val (inputStream, size) = downloadUrl.toDownloadResult()
             inputStream.use {

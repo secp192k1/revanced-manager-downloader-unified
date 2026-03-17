@@ -71,7 +71,7 @@ android {
     applicationVariants.all {
         outputs.all {
             this as ApkVariantOutputImpl
-            outputFileName = "revanced-manager-extended-downloaders-$version.apk"
+            outputFileName = "revanced-manager-unified-downloaders-$version.apk"
         }
     }
 }
@@ -104,7 +104,7 @@ tasks.register("assembleReleaseSignApk") {
     dependsOn("assembleRelease")
 
     val apk =
-        layout.buildDirectory.file("outputs/apk/release/revanced-manager-downloaders-extended-$version.apk")
+        layout.buildDirectory.file("outputs/apk/release/revanced-manager-unified-downloaders-$version.apk")
 
     inputs.file(apk).withPropertyName("input")
     outputs.file(apk.map { it.asFile.resolveSibling("${it.asFile.name}.asc") })

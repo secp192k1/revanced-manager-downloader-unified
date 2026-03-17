@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">ReVanced Manager: Extended Downloaders</string>
+    <string name="app_name">ReVanced Manager: Unified Downloaders</string>
     <!-- Original Downloaders
     <string name="apkmirror">APKMirror</string>
     <string name="play_store">Play Store</string> -->
 
-    <!-- Extended Downloaders -->
-    <string name="apkmirror_ex">APKMirror EX</string>
-    <string name="fdroid_ex">F-Droid EX</string>
+    <!-- Unified Downloaders -->
+    <string name="apkmirror_uni">APKMirror ★</string>
+    <string name="fdroid_uni">F-Droid ★</string>
 </resources>

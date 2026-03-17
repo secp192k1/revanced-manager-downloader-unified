@@ -1,4 +1,4 @@
-package app.revanced.manager.downloaders.extended.data
+package app.revanced.manager.downloaders.unified.data
 
 enum class Provider {
     APK_MIRROR,

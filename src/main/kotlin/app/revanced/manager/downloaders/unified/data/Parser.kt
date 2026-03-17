@@ -1,4 +1,4 @@
-package app.revanced.manager.downloaders.extended.data
+package app.revanced.manager.downloaders.unified.data
 
 object Parser {
     fun findMatch(input: String, pattern: Regex, groupIndex: Int = 1): String? {

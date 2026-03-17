@@ -1,6 +1,6 @@
 @file:Suppress("Unused")
 
-package app.revanced.manager.downloaders.extended.apkmirror
+package app.revanced.manager.downloaders.unified.apkmirror
 
 import android.net.Uri
 import app.revanced.manager.downloader.DownloadUrl
@@ -22,9 +22,9 @@ import kotlin.io.path.outputStream
 // it shall be completed later
 
 @OptIn(ExperimentalPathApi::class)
-val ApkMirrorEXDownloader = Downloader(R.string.apkmirror_ex) {
+val ApkMirrorEXDownloader = Downloader(R.string.apkmirror_uni) {
     get { packageName, version ->
-        runWebView("APKMirror EX") {
+        runWebView("APKMirror ★") {
             download { url, _, userAgent ->
                 finish(
                     DownloadUrl(
@@ -46,7 +46,7 @@ val ApkMirrorEXDownloader = Downloader(R.string.apkmirror_ex) {
     }
 
     download { downloadUrl, outputStream ->
-        val workingDir = Files.createTempDirectory("apkmirror_ex_dl")
+        val workingDir = Files.createTempDirectory("apkmirror_uni_dl")
         try {
             if (URI(downloadUrl.url).path.substringAfterLast('/').endsWith(".apk")) {
                 val (inputStream, size) = downloadUrl.toDownloadResult()

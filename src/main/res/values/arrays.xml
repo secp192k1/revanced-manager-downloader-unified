@@ -9,7 +9,7 @@
         Play store login is currently broken. Disabling it for now.
         <item>app.revanced.manager.downloaders.play.store.PlayStoreDownloaderKt</item>
         -->
-        <item>app.revanced.manager.downloaders.extended.apkmirror.APKMirrorEXDownloaderKt</item>
-        <item>app.revanced.manager.downloaders.extended.fdroid.FDroidEXDownloaderKt</item>
+        <item>app.revanced.manager.downloaders.unified.apkmirror.APKMirrorUniDownloaderKt</item>
+        <item>app.revanced.manager.downloaders.unified.fdroid.FDroidUniDownloaderKt</item>
     </string-array>
 </resources>

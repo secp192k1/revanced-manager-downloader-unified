@@ -1,4 +1,4 @@
-# ⚡🔌 ReVanced Manager Extended Downloaders
+# ⚡🔌 ReVanced Manager Unified Downloaders
 
 ![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)
 
@@ -14,7 +14,7 @@ An addition of extra downloaders for ReVanced Manager.
 > Don't expect the commit titles and code comments to be very professional.
 
 ## 🧑‍💻 Usage
-1. Download latest release from the [releases page](https://github.com/secp192k1/revanced-manager-downloader-extended/releases/).
+1. Download latest release from the [releases page](https://github.com/secp192k1/revanced-manager-downloader-unified/releases/).
 2. Open ReVanced Manager.
 3. Navigate to the **Settings** and then **Downloads** tab. 
 4. **Add** the downloaded release.

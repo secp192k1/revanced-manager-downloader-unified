@@ -1,4 +1,4 @@
-package app.revanced.manager.downloaders.extended.data
+package app.revanced.manager.downloaders.unified.data
 
 import android.util.Log
 import io.ktor.client.*

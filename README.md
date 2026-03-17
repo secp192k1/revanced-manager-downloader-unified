@@ -21,12 +21,12 @@ An addition of extra downloaders for ReVanced Manager.
 5. Enjoy!
 
 ## 💡 Available Downloaders
-| **Source** 	   | **Status** 	        |
-|----------------|---------------------|
-| APKMirror EX 	 | ❓ To be tested 	    |
-| APKPure EX 	   | 🔀 Different Repo 	 |
-| APKCombo EX 	  | ❓ To be tested 	    |
-| F-Droid EX 	   | ❓ To be tested 	    |
+| **Source** 	 | **Status** 	        |
+|--------------|---------------------|
+| APKMirror ★ 	 | ❓ To be tested 	    |
+| APKPure ★ 	 | 🔀 Different Repo 	 |
+| APKCombo ★ 	 | ❓ To be tested 	    |
+| F-Droid ★ 	 | ❓ To be tested 	    |
 
 > [!WARNING]
 > Very work in progress!

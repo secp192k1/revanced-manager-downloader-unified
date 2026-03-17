@@ -13,7 +13,7 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteRecursively
 
 @OptIn(ExperimentalPathApi::class)
-val FDroidEXDownloader = Downloader(R.string.fdroid_uni) {
+val FDroidUniDownloader = Downloader(R.string.fdroid_uni) {
     get { packageName, version ->
         runWebView("F-Droid ★") {
             download { url, _, userAgent ->

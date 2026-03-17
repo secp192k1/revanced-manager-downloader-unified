@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
       - dev
 
 jobs:
@@ -68,5 +67,5 @@ jobs:
         if: steps.release.outputs.new_release_published == 'true'
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: 'ReVanced Downloaders ${{ steps.release.outputs.new_release_git_tag }}'
+          subject-name: 'ReVanced Unified Downloaders ${{ steps.release.outputs.new_release_git_tag }}'
           subject-path: build/outputs/apk/release/*.apk

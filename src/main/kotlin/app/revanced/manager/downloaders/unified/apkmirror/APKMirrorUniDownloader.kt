@@ -22,7 +22,7 @@ import kotlin.io.path.outputStream
 // it shall be completed later
 
 @OptIn(ExperimentalPathApi::class)
-val ApkMirrorEXDownloader = Downloader(R.string.apkmirror_uni) {
+val ApkMirrorUniDownloader = Downloader(R.string.apkmirror_uni) {
     get { packageName, version ->
         runWebView("APKMirror ★") {
             download { url, _, userAgent ->

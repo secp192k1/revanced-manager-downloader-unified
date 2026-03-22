@@ -34,7 +34,7 @@ object OkClient {
         install(DefaultRequest) {
             header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             header("Accept-Language", "en-US,en;q=0.9")
-            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0")
+            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0")
             header("Connection", "keep-alive")
             header("DNT", "1")
         }
@@ -51,16 +51,41 @@ object OkClient {
                 Provider.APK_MIRROR -> {
                     header("Alt-Used", "www.apkmirror.com")
                     header("Origin", "https://www.apkmirror.com")
-                    header("Cookie", "apkmirror_name=; apkmirror_email=")
+                    val cookies = try { android.webkit.CookieManager.getInstance().getCookie("https://www.apkmirror.com") } catch (e: Exception) { null }
+                    header("Cookie", cookies ?: "apkmirror_name=; apkmirror_email=")
                 }
                 Provider.APK_COMBO -> {
                     header("Referer", "https://apkcombo.com/")
-                    header("Cookie", "__apkcombo_lang=en")
+                    val cookies = try { android.webkit.CookieManager.getInstance().getCookie("https://apkcombo.com") } catch (e: Exception) { null }
+                    header("Cookie", cookies ?: "__apkcombo_lang=en")
                 }
                 Provider.F_DROID -> {
                     header("Referer", "https://f-droid.org/")
                 }
             }
+        }
+    }
+
+    suspend fun fetchStream(provider: Provider, url: String, block: suspend (HttpResponse) -> Unit) {
+        client.prepareGet(url) {
+            when (provider) {
+                Provider.APK_MIRROR -> {
+                    header("Alt-Used", "www.apkmirror.com")
+                    header("Origin", "https://www.apkmirror.com")
+                    val cookies = try { android.webkit.CookieManager.getInstance().getCookie("https://www.apkmirror.com") } catch (e: Exception) { null }
+                    header("Cookie", cookies ?: "apkmirror_name=; apkmirror_email=")
+                }
+                Provider.APK_COMBO -> {
+                    header("Referer", "https://apkcombo.com/")
+                    val cookies = try { android.webkit.CookieManager.getInstance().getCookie("https://apkcombo.com") } catch (e: Exception) { null }
+                    header("Cookie", cookies ?: "__apkcombo_lang=en")
+                }
+                Provider.F_DROID -> {
+                    header("Referer", "https://f-droid.org/")
+                }
+            }
+        }.execute { response ->
+            block(response)
         }
     }
 
@@ -93,71 +118,3 @@ object OkClient {
     }
 }
 
-object ApkMirror {
-    private const val BASE_URL = "https://www.apkmirror.com"
-
-    suspend fun search(query: String): String? {
-        val queryEncoded = query.encodeURLQueryComponent()
-        val url = "$BASE_URL/?post_type=app_release&searchtype=apk&s=$queryEncoded&bundles[]=apk_files"
-
-        val response = OkClient.fetch(Provider.APK_MIRROR, url)
-        if (response.status.value !in 200..299) return null
-
-        val body = response.bodyAsText()
-        // this regex can also get the suggested apps on the side 💢💢 we don't want it!
-        // val regex = """<a\shref="(/apk/[a-z/\-0-9]*)#disqus""".toRegex()
-        val regex = """href="([^"]+)">[^"]+"/apk/""".toRegex()
-        return Parser.findMatch(body, regex)
-    }
-
-    suspend fun lookup(path: String): Map<String, String>? {
-        val response = OkClient.fetch(Provider.APK_MIRROR, "$BASE_URL$path")
-        if (response.status.value !in 200..299) return null
-
-        val body = response.bodyAsText()
-        val regex = """>(APK|BUNDLE)</span>[\s\xA0]+<span[^>]+>(?:[^<]+</span>[\s\xA0]+<span[^>]+>)?<a href="([^"#]+)""".toRegex()
-        return Parser.findGroupsToMap(body, regex)
-    }
-
-    suspend fun getDownloadURL(path: String): String? {
-        val response = OkClient.fetch(Provider.APK_MIRROR, "$BASE_URL$path")
-        if (response.status.value !in 200..299) return null
-
-        val body = response.bodyAsText()
-        val regex = """(?<=href=")[^"]+download/\?key=[a-f0-9]{40}""".toRegex()
-        val match = Parser.findMatch(body, regex, 0)
-        return "$BASE_URL$match"
-    }
-}
-
-object ApkCombo {
-    private const val BASE_URL = "https://apkcombo.com"
-
-    suspend fun search(packageName: String): String? {
-        val response = OkClient.fetch(Provider.APK_COMBO, "$BASE_URL/search/$packageName")
-        if (response.status.value !in 200..299) return null
-
-        val body = response.bodyAsText()
-        val regex = """<meta property="og:url" content="([^"]+)"/>""".toRegex()
-        return Parser.findMatch(body, regex)
-    }
-
-    suspend fun lookup(path: String): Map<String, String>? {
-        val response = OkClient.fetch(Provider.APK_COMBO, "${path}old-versions")
-        if (response.status.value !in 200..299) return null
-
-        val body = response.bodyAsText()
-        val regex = """href="(/[^"]+-apk)"[A-Z\sa-z\W\S]+?<span class="type-x?apk">(X?APK)""".toRegex()
-        return Parser.findGroupsToMap(body, regex)
-    }
-
-    suspend fun getDownloadURL(path: String): String? {
-        val response = OkClient.fetch(Provider.APK_COMBO, "$BASE_URL$path")
-        if (response.status.value !in 200..299) return null
-
-        val body = response.bodyAsText()
-        val regex = """class="file-list">[^"]+"([^"]+)"""".toRegex()
-        val match = Parser.findMatch(body, regex)
-        return "$BASE_URL$match"
-    }
-}

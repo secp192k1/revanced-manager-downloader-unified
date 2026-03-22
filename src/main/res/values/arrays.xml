@@ -10,6 +10,7 @@
         <item>app.revanced.manager.downloaders.play.store.PlayStoreDownloaderKt</item>
         -->
         <item>app.revanced.manager.downloaders.unified.apkmirror.APKMirrorUniDownloaderKt</item>
+        <item>app.revanced.manager.downloaders.unified.apkcombo.APKComboUniDownloaderKt</item>
         <item>app.revanced.manager.downloaders.unified.fdroid.FDroidUniDownloaderKt</item>
     </string-array>
 </resources>

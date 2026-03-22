@@ -6,5 +6,6 @@
 
     <!-- Unified Downloaders -->
     <string name="apkmirror_uni">APKMirror ★</string>
+    <string name="apkcombo_uni">APKCombo ★</string>
     <string name="fdroid_uni">F-Droid ★</string>
 </resources>

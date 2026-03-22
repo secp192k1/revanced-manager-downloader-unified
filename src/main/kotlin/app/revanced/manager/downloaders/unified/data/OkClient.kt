@@ -1,14 +1,18 @@
 package app.revanced.manager.downloaders.unified.data
 
 import android.util.Log
+import android.webkit.CookieManager
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.client.plugins.*
+import io.ktor.client.plugins.cookies.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.plugins.compression.*
-import io.ktor.http.encodeURLQueryComponent
+import io.ktor.http.Cookie
+import io.ktor.http.Url
+import io.ktor.http.renderSetCookieHeader
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,6 +20,48 @@ import java.io.File
 import java.io.FileOutputStream
 
 const val LOG_TAG = "OkClient"
+
+val SYSTEM_USER_AGENT: String by lazy {
+    try {
+        val context = Class.forName("android.app.ActivityThread").getMethod("currentApplication").invoke(null) as android.content.Context
+        android.webkit.WebSettings.getDefaultUserAgent(context)
+    } catch(e: Exception) {
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0"
+    }
+}
+
+// Custom storage to seamlessly bridge Ktor with Android's WebKit CookieManager
+class WebkitCookieStorage : CookiesStorage {
+    private val cookieManager = CookieManager.getInstance()
+
+    override suspend fun get(requestUrl: Url): List<Cookie> {
+        val urlString = requestUrl.toString()
+        var cookieHeader = cookieManager.getCookie(urlString)
+
+        // Fallback logic
+        if (cookieHeader.isNullOrEmpty()) {
+            if (urlString.contains("apkmirror.com")) {
+                cookieHeader = "apkmirror_name=; apkmirror_email="
+            } else if (urlString.contains("apkcombo.com")) {
+                cookieHeader = "__apkcombo_lang=en"
+            }
+        }
+
+        if (cookieHeader.isNullOrEmpty()) return emptyList()
+
+        return cookieHeader.split(";").mapNotNull {
+            val parts = it.trim().split("=", limit = 2)
+            if (parts.size == 2) Cookie(parts[0], parts[1]) else null
+        }
+    }
+
+    override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
+        cookieManager.setCookie(requestUrl.toString(), renderSetCookieHeader(cookie))
+        cookieManager.flush()
+    }
+
+    override fun close() {}
+}
 
 object OkClient {
 
@@ -26,6 +72,10 @@ object OkClient {
             }
         }
 
+        install(HttpCookies) {
+            storage = WebkitCookieStorage()
+        }
+
         install(ContentEncoding) {
             gzip()
             deflate()
@@ -34,9 +84,15 @@ object OkClient {
         install(DefaultRequest) {
             header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             header("Accept-Language", "en-US,en;q=0.9")
-            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) Gecko/20100101 Firefox/148.0")
+            header("User-Agent", SYSTEM_USER_AGENT)
             header("Connection", "keep-alive")
-            header("DNT", "1")
+            header("Sec-GPC", "1")
+            header("Upgrade-Insecure-Requests", "1")
+            header("Sec-Fetch-Dest", "document")
+            header("Sec-Fetch-Mode", "navigate")
+            header("Sec-Fetch-Site", "same-origin")
+            header("Priority", "u=0, i")
+            header("TE", "trailers")
         }
 
         install(Logging) {
@@ -51,13 +107,9 @@ object OkClient {
                 Provider.APK_MIRROR -> {
                     header("Alt-Used", "www.apkmirror.com")
                     header("Origin", "https://www.apkmirror.com")
-                    val cookies = try { android.webkit.CookieManager.getInstance().getCookie("https://www.apkmirror.com") } catch (e: Exception) { null }
-                    header("Cookie", cookies ?: "apkmirror_name=; apkmirror_email=")
                 }
                 Provider.APK_COMBO -> {
                     header("Referer", "https://apkcombo.com/")
-                    val cookies = try { android.webkit.CookieManager.getInstance().getCookie("https://apkcombo.com") } catch (e: Exception) { null }
-                    header("Cookie", cookies ?: "__apkcombo_lang=en")
                 }
                 Provider.F_DROID -> {
                     header("Referer", "https://f-droid.org/")
@@ -72,13 +124,9 @@ object OkClient {
                 Provider.APK_MIRROR -> {
                     header("Alt-Used", "www.apkmirror.com")
                     header("Origin", "https://www.apkmirror.com")
-                    val cookies = try { android.webkit.CookieManager.getInstance().getCookie("https://www.apkmirror.com") } catch (e: Exception) { null }
-                    header("Cookie", cookies ?: "apkmirror_name=; apkmirror_email=")
                 }
                 Provider.APK_COMBO -> {
                     header("Referer", "https://apkcombo.com/")
-                    val cookies = try { android.webkit.CookieManager.getInstance().getCookie("https://apkcombo.com") } catch (e: Exception) { null }
-                    header("Cookie", cookies ?: "__apkcombo_lang=en")
                 }
                 Provider.F_DROID -> {
                     header("Referer", "https://f-droid.org/")

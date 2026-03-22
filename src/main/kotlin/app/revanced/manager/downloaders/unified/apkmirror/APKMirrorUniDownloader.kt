@@ -11,20 +11,21 @@ import app.revanced.manager.downloaders.shared.Merger
 import app.revanced.manager.downloaders.unified.data.OkClient
 import app.revanced.manager.downloaders.unified.data.Parser
 import app.revanced.manager.downloaders.unified.data.Provider
+import app.revanced.manager.downloaders.unified.data.SYSTEM_USER_AGENT
 import android.webkit.CookieManager
 import app.revanced.manager.downloader.webview.runWebView
 import io.ktor.client.statement.*
 import io.ktor.utils.io.*
 import io.ktor.http.encodeURLQueryComponent
-
-class CloudflareException(val url: String) : Exception("Cloudflare blocked the request")
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
+import kotlin.io.path.outputStream
 import java.net.URI
 import java.nio.file.Files
 import java.util.UUID
 import java.util.zip.ZipFile
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.deleteRecursively
-import kotlin.io.path.outputStream
+
+class CloudflareException(val url: String) : Exception("Cloudflare blocked the request")
 
 
 object ApkMirror {
@@ -32,7 +33,7 @@ object ApkMirror {
 
     suspend fun search(query: String): String? {
         val queryEncoded = query.encodeURLQueryComponent()
-        val url = "$BASE_URL/?post_type=app_release&searchtype=apk&s=$queryEncoded&bundles[]=apk_files"
+        val url = "$BASE_URL/?post_type=app_release&searchtype=apk&s=$queryEncoded&bundles[]=apk_files&bundles[]=apkm_bundles"
 
         Log.i("ApkMirror", "Searching: $url")
         val response = OkClient.fetch(Provider.APK_MIRROR, url)
@@ -64,7 +65,9 @@ object ApkMirror {
         }
 
         val body = response.bodyAsText()
-        val regex = """>(APK|BUNDLE)</span>[\s\xA0]+<span[^>]+>(?:[^<]+</span>[\s\xA0]+<span[^>]+>)?<a href="([^"#]+)""".toRegex()
+        //so this one is missing the signature bubble
+        //val regex = """>(APK|BUNDLE)</span>[\s\xA0]+<span[^>]+>(?:[^<]+</span>[\s\xA0]+<span[^>]+>)?<a href="([^"#]+)""".toRegex()
+        val regex = """(?s)>(APK|BUNDLE)</span>[\s\xA0]+<span[^>]+>(?:[^<]+</span>[\s\xA0]+<span[^>]+>)?(?:.*?)?<a href="([^"#]+)""".toRegex()
         val match = Parser.findGroupsToMap(body, regex)
         Log.i("ApkMirror", "Lookup variants found: $match")
         return match
@@ -106,7 +109,12 @@ val ApkMirrorUniDownloader = Downloader(R.string.apkmirror_uni) {
         Log.i("ApkMirrorUniDownloader", "Get requested for packageName=$packageName, version=$version. Extracted appName=$appName, query=$query")
         
         suspend fun executePipeline(): Pair<DownloadUrl, String?> {
-            val searchPath = ApkMirror.search(query) ?: throw Exception("No results found matching your query: $query (original package: $packageName)")
+            var searchPath = ApkMirror.search(query)
+            if (searchPath == null) {
+                Log.i("ApkMirrorUniDownloader", "No results for '$query', falling back to raw packageName search")
+                val fallbackQuery = queryVersion?.let { "$packageName $it" } ?: packageName
+                searchPath = ApkMirror.search(fallbackQuery) ?: throw Exception("No results found matching your query: $query or $fallbackQuery")
+            }
             Log.i("ApkMirrorUniDownloader", "SearchPath resolved: $searchPath")
             
             val variants = ApkMirror.lookup(searchPath) ?: throw Exception("Variants lookup failed for path: $searchPath")
@@ -126,9 +134,15 @@ val ApkMirrorUniDownloader = Downloader(R.string.apkmirror_uni) {
                 mapOf(
                     "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                     "Accept-Language" to "en-US,en;q=0.9",
-                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0",
+                    "User-Agent" to SYSTEM_USER_AGENT,
                     "Connection" to "keep-alive",
-                    "DNT" to "1",
+                    "Sec-GPC" to "1",
+                    "Upgrade-Insecure-Requests" to "1",
+                    "Sec-Fetch-Dest" to "document",
+                    "Sec-Fetch-Mode" to "navigate",
+                    "Sec-Fetch-Site" to "same-origin",
+                    "Priority" to "u=0, i",
+                    "TE" to "trailers",
                     "Alt-Used" to "www.apkmirror.com",
                     "Origin" to "https://www.apkmirror.com",
                     "Cookie" to (finalCookie ?: "apkmirror_name=; apkmirror_email=")
@@ -136,22 +150,34 @@ val ApkMirrorUniDownloader = Downloader(R.string.apkmirror_uni) {
             ) to version
         }
 
-        try {
-            executePipeline()
-        } catch (e: CloudflareException) {
-            Log.i("ApkMirrorUniDownloader", "Caught 403 Cloudflare block on ${e.url}, launching WebView bypass...")
-            runWebView("Cloudflare Bypass") {
-                pageLoad { loadedUrl ->
-                    val cookieStr = try { CookieManager.getInstance().getCookie("https://www.apkmirror.com") } catch (ex: Exception) { null }
-                    if (cookieStr?.contains("cf_clearance") == true) {
-                        finish(cookieStr)
+        suspend fun retryLoop(): Pair<DownloadUrl, String?> {
+            val maxRetries = 2
+            var currentTry = 0
+            while (true) {
+                try {
+                    return executePipeline()
+                } catch (e: CloudflareException) {
+                    currentTry++
+                    if (currentTry > maxRetries) {
+                        Log.e("ApkMirrorUniDownloader", "Cloudflare bypass failed after $maxRetries attempts!")
+                        throw e
                     }
+                    Log.i("ApkMirrorUniDownloader", "Caught 403 Cloudflare block on ${e.url}, launching WebView bypass (Try $currentTry / $maxRetries)...")
+                    runWebView("Cloudflare Bypass") {
+                        pageLoad { loadedUrl ->
+                            val cookieStr = try { CookieManager.getInstance().getCookie("https://www.apkmirror.com") } catch (ex: Exception) { null }
+                            if (cookieStr?.contains("cf_clearance") == true) {
+                                finish(cookieStr)
+                            }
+                        }
+                        e.url
+                    }
+                    Log.i("ApkMirrorUniDownloader", "Cloudflare bypassed, cookies obtained. Retrying pipeline...")
                 }
-                e.url
             }
-            Log.i("ApkMirrorUniDownloader", "Cloudflare bypassed, cookies obtained. Retrying pipeline...")
-            executePipeline()
         }
+
+        retryLoop()
     }
 
     download { downloadUrl, outputStream ->

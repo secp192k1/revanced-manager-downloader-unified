@@ -11,6 +11,7 @@ import app.revanced.manager.downloaders.shared.Merger
 import app.revanced.manager.downloaders.unified.data.OkClient
 import app.revanced.manager.downloaders.unified.data.Parser
 import app.revanced.manager.downloaders.unified.data.Provider
+import app.revanced.manager.downloaders.unified.data.SYSTEM_USER_AGENT
 import io.ktor.client.statement.*
 import io.ktor.utils.io.*
 import java.nio.file.Files
@@ -117,9 +118,9 @@ val ApkComboUniDownloader = Downloader(R.string.apkcombo_uni) {
             mapOf(
                 "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language" to "en-US,en;q=0.9",
-                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0",
+                "User-Agent" to SYSTEM_USER_AGENT,
                 "Connection" to "keep-alive",
-                "DNT" to "1",
+                "Sec-GPC" to "1",
                 "Referer" to "https://apkcombo.com/",
                 "Cookie" to "__apkcombo_lang=en"
             )

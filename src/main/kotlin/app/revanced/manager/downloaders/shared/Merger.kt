@@ -31,6 +31,29 @@ class Merger {
         suspend fun merge(apkDir: Path): ApkModule {
             val closeables = mutableSetOf<Closeable>()
             try {
+                // Filter out unnecessary ABI splits to save memory and avoid OOM
+                val supportedAbis = android.os.Build.SUPPORTED_ABIS.map { it.replace("-", "_") }
+                val knownAbis = arrayOf("arm64_v8a", "armeabi_v7a", "armeabi", "x86", "x86_64", "mips", "mips64")
+                val dirFile = apkDir.toFile()
+                val apkFiles = dirFile.listFiles { f -> f.isFile && f.name.endsWith(".apk") } ?: emptyArray()
+
+                var bestAbi: String? = null
+                for (abi in supportedAbis) {
+                    if (apkFiles.any { file -> knownAbis.any { file.name.endsWith("$it.apk") } && file.name.endsWith("$abi.apk") }) {
+                        bestAbi = abi
+                        break
+                    }
+                }
+
+                apkFiles.forEach { file ->
+                    val name = file.name
+                    val isAbiSplit = knownAbis.any { name.endsWith("$it.apk") }
+                    if (isAbiSplit && bestAbi != null && !name.endsWith("$bestAbi.apk")) {
+                        Log.i("ARSCLib", "Removing unused ABI split to save memory: $name")
+                        file.delete()
+                    }
+                }
+
                 // Merge split APKs
                 val merged = withContext(Dispatchers.Default) {
                     with(ApkBundle()) {

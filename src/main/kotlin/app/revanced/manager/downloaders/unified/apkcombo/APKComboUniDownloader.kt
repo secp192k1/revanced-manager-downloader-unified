@@ -13,7 +13,6 @@ import app.revanced.manager.downloaders.unified.data.Parser
 import app.revanced.manager.downloaders.unified.data.Provider
 import io.ktor.client.statement.*
 import io.ktor.utils.io.*
-import java.net.URI
 import java.nio.file.Files
 import java.util.UUID
 import java.util.zip.ZipFile

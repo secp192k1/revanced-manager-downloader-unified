@@ -11,6 +11,11 @@ import app.revanced.manager.downloaders.shared.Merger
 import app.revanced.manager.downloaders.unified.data.OkClient
 import app.revanced.manager.downloaders.unified.data.Parser
 import app.revanced.manager.downloaders.unified.data.Provider
+import android.webkit.CookieManager
+import app.revanced.manager.downloader.webview.runWebView
+
+class CloudflareException(val url: String) : Exception("Cloudflare blocked the request")
+
 import io.ktor.client.statement.*
 import io.ktor.utils.io.*
 import io.ktor.http.encodeURLQueryComponent
@@ -31,10 +36,11 @@ object ApkMirror {
         val url = "$BASE_URL/?post_type=app_release&searchtype=apk&s=$queryEncoded&bundles[]=apk_files"
 
         Log.i("ApkMirror", "Searching: $url")
-        val response = OkClient.fet\ch(Provider.APK_MIRROR, url)
+        val response = OkClient.fetch(Provider.APK_MIRROR, url)
 
         Log.i("ApkMirror", "HTTP Status: ${response.status.value}")
 
+        if (response.status.value == 403) throw CloudflareException(url)
         if (response.status.value !in 200..299) {
             Log.e("ApkMirror", "Search HTTP failed: ${response.status.value}")
             return null
@@ -52,6 +58,7 @@ object ApkMirror {
     suspend fun lookup(path: String): Map<String, String>? {
         Log.i("ApkMirror", "Looking up variants for: $path")
         val response = OkClient.fetch(Provider.APK_MIRROR, "$BASE_URL$path")
+        if (response.status.value == 403) throw CloudflareException("$BASE_URL$path")
         if (response.status.value !in 200..299) {
             Log.e("ApkMirror", "Lookup HTTP failed: ${response.status.value}")
             return null
@@ -67,6 +74,7 @@ object ApkMirror {
     suspend fun getDownloadURL(path: String): String? {
         Log.i("ApkMirror", "Getting download URL for variant: $path")
         val response = OkClient.fetch(Provider.APK_MIRROR, "$BASE_URL$path")
+        if (response.status.value == 403) throw CloudflareException("$BASE_URL$path")
         if (response.status.value !in 200..299) {
             Log.e("ApkMirror", "GetDownloadURL HTTP failed: ${response.status.value}")
             return null
@@ -98,33 +106,53 @@ val ApkMirrorUniDownloader = Downloader(R.string.apkmirror_uni) {
         val query = queryVersion?.let { "$appName $it" } ?: appName
         Log.i("ApkMirrorUniDownloader", "Get requested for packageName=$packageName, version=$version. Extracted appName=$appName, query=$query")
         
-        val searchPath = ApkMirror.search(query) ?: throw Exception("No results found matching your query: $query (original package: $packageName)")
-        Log.i("ApkMirrorUniDownloader", "SearchPath resolved: $searchPath")
-        
-        val variants = ApkMirror.lookup(searchPath) ?: throw Exception("Variants lookup failed for path: $searchPath")
-        Log.i("ApkMirrorUniDownloader", "Variants resolved: ${variants.keys}")
-        
-        val variantPath = variants["APK"] ?: variants.values.firstOrNull() ?: throw Exception("No variants found for path: $searchPath. Extracted variants: $variants")
-        val isApkVariant = (variantPath == variants["APK"]).toString()
-        Log.i("ApkMirrorUniDownloader", "VariantPath selected: $variantPath (isApk=$isApkVariant)")
-        
-        val downloadUrl = ApkMirror.getDownloadURL(variantPath) ?: throw Exception("Download failed")
-        val nativeUrl = if (isApkVariant == "true") "$downloadUrl#APK" else "$downloadUrl#XAPK"
-        Log.i("ApkMirrorUniDownloader", "DownloadUrl resolved: $nativeUrl")
+        suspend fun executePipeline(): Pair<DownloadUrl, String?> {
+            val searchPath = ApkMirror.search(query) ?: throw Exception("No results found matching your query: $query (original package: $packageName)")
+            Log.i("ApkMirrorUniDownloader", "SearchPath resolved: $searchPath")
+            
+            val variants = ApkMirror.lookup(searchPath) ?: throw Exception("Variants lookup failed for path: $searchPath")
+            Log.i("ApkMirrorUniDownloader", "Variants resolved: ${variants.keys}")
+            
+            val variantPath = variants["APK"] ?: variants.values.firstOrNull() ?: throw Exception("No variants found for path: $searchPath. Extracted variants: $variants")
+            val isApkVariant = (variantPath == variants["APK"]).toString()
+            Log.i("ApkMirrorUniDownloader", "VariantPath selected: $variantPath (isApk=$isApkVariant)")
+            
+            val downloadUrl = ApkMirror.getDownloadURL(variantPath) ?: throw Exception("Download failed")
+            val nativeUrl = if (isApkVariant == "true") "$downloadUrl#APK" else "$downloadUrl#XAPK"
+            Log.i("ApkMirrorUniDownloader", "DownloadUrl resolved: $nativeUrl")
 
-        DownloadUrl(
-            nativeUrl,
-            mapOf(
-                "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language" to "en-US,en;q=0.9",
-                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0",
-                "Connection" to "keep-alive",
-                "DNT" to "1",
-                "Alt-Used" to "www.apkmirror.com",
-                "Origin" to "https://www.apkmirror.com",
-                "Cookie" to "apkmirror_name=; apkmirror_email="
-            )
-        ) to version
+            val finalCookie = try { CookieManager.getInstance().getCookie("https://www.apkmirror.com") } catch (e: Exception) { null }
+            return DownloadUrl(
+                nativeUrl,
+                mapOf(
+                    "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language" to "en-US,en;q=0.9",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0",
+                    "Connection" to "keep-alive",
+                    "DNT" to "1",
+                    "Alt-Used" to "www.apkmirror.com",
+                    "Origin" to "https://www.apkmirror.com",
+                    "Cookie" to (finalCookie ?: "apkmirror_name=; apkmirror_email=")
+                )
+            ) to version
+        }
+
+        try {
+            executePipeline()
+        } catch (e: CloudflareException) {
+            Log.i("ApkMirrorUniDownloader", "Caught 403 Cloudflare block on ${e.url}, launching WebView bypass...")
+            runWebView("Cloudflare Bypass") {
+                pageLoad { loadedUrl ->
+                    val cookieStr = try { CookieManager.getInstance().getCookie("https://www.apkmirror.com") } catch (ex: Exception) { null }
+                    if (cookieStr?.contains("cf_clearance") == true) {
+                        finish(cookieStr)
+                    }
+                }
+                e.url
+            }
+            Log.i("ApkMirrorUniDownloader", "Cloudflare bypassed, cookies obtained. Retrying pipeline...")
+            executePipeline()
+        }
     }
 
     download { downloadUrl, outputStream ->

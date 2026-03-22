@@ -13,12 +13,11 @@ import app.revanced.manager.downloaders.unified.data.Parser
 import app.revanced.manager.downloaders.unified.data.Provider
 import android.webkit.CookieManager
 import app.revanced.manager.downloader.webview.runWebView
-
-class CloudflareException(val url: String) : Exception("Cloudflare blocked the request")
-
 import io.ktor.client.statement.*
 import io.ktor.utils.io.*
 import io.ktor.http.encodeURLQueryComponent
+
+class CloudflareException(val url: String) : Exception("Cloudflare blocked the request")
 import java.net.URI
 import java.nio.file.Files
 import java.util.UUID

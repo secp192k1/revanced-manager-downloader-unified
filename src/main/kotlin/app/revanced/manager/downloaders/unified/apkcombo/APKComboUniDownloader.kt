@@ -177,7 +177,7 @@ val ApkComboUniDownloader = Downloader(R.string.apkcombo_uni) {
                         }
                     }
 
-                    Merger.merge(xapkWorkingDir).writeApk(outputStream)
+                    Merger.merge(xapkWorkingDir, outputStream)
                 }
             }
         } finally {

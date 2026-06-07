@@ -3,12 +3,12 @@ package app.revanced.manager.downloaders.shared
 import android.util.Log
 import com.reandroid.apk.APKLogger
 import com.reandroid.apk.ApkBundle
-import com.reandroid.apk.ApkModule
 import com.reandroid.app.AndroidManifest
 import java.io.Closeable
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.OutputStream
 
 private object ArscLogger : APKLogger {
     const val TAG = "ARSCLib"
@@ -28,7 +28,7 @@ private object ArscLogger : APKLogger {
 
 class Merger {
     companion object Factory {
-        suspend fun merge(apkDir: Path): ApkModule {
+        suspend fun merge(apkDir: Path, out: OutputStream) {
             val closeables = mutableSetOf<Closeable>()
             try {
                 // Filter out unnecessary ABI splits to save memory and avoid OOM
@@ -92,7 +92,8 @@ class Merger {
                     refresh()
                 }
 
-                return merged
+                System.gc()
+                merged.writeApk(out)
             } finally {
                 closeables.forEach(Closeable::close)
             }

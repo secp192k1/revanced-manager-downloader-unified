@@ -101,9 +101,7 @@ val playStoreDownloader = Downloader(R.string.play_store) {
             if (apkFiles.size == 1)
                 Files.copy(apkFiles.first(), outputStream)
             else
-                Merger.merge(apkDir)
-                    .writeApk(outputStream)
-
+                Merger.merge(apkDir, outputStream)
         } finally {
             apkDir.deleteRecursively()
         }

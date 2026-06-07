@@ -68,7 +68,7 @@ val ApkMirrorDownloader = Downloader(R.string.apkmirror) {
                     }
                 }
 
-                Merger.merge(xapkWorkingDir).writeApk(outputStream)
+                Merger.merge(xapkWorkingDir, outputStream)
             }
         } finally {
             workingDir.deleteRecursively()

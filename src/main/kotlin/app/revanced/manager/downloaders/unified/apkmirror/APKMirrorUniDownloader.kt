@@ -229,8 +229,18 @@ val ApkMirrorUniDownloader = Downloader(R.string.apkmirror_uni) {
                             }
                         }
                     }
+                    Files.deleteIfExists(downloadedFile)
+                    System.gc()
 
-                    Merger.merge(xapkWorkingDir).writeApk(outputStream)
+                    val maxMem = Runtime.getRuntime().maxMemory()
+                    val usedMem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+                    if ((maxMem - usedMem) < 400L * 1024 * 1024) {
+                        throw OutOfMemoryError("Need ≥400MB free RAM for XAPK assembly. Close other apps.")
+                    }
+
+                    System.gc()
+                    Merger.merge(xapkWorkingDir, outputStream)
+                    System.gc()
                 }
             }
         } finally {
